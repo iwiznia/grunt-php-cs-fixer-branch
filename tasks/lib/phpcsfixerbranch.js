@@ -28,6 +28,7 @@ exports.init = function(grunt) {
             maxBuffer: 200*1024,
             branch: 'master'
         },
+        filesSrc = [],
         done = null,
         config = {};
 
@@ -154,28 +155,32 @@ exports.init = function(grunt) {
      */
     exports.setup = function(runner) {
         config = runner.options(defaults);
+        filesSrc = runner.filesSrc;
         done = runner.async();
     };
 
     /**
-     * Runs phpunit command with options
-     *
+     * Runs the plugin
      */
     exports.run = function() {
         var branch = config.branch || defaults.branch;
 
-        var command = '{ git diff ' + branch + '... --name-status; git diff --name-status; } | ';
-        command += config.ignored ? "grep -v '" + config.ignored + "' | " : '';
-        command += 'egrep \"^[A|M].*\\.php$\" | cut -f 2';
+        if(_.isArray(filesSrc) && filesSrc.length > 0) {
+            runOnFiles(filesSrc);
+        } else {
+            var command = '{ git diff ' + branch + '... --name-status; git diff --name-status; } | ';
+            command += config.ignored ? "grep -v '" + config.ignored + "' | " : '';
+            command += 'egrep \"^[A|M].*\\.php$\" | cut -f 2';
 
-        doExec(command, {}, function(err, files, stderr) {
-            files = files.toString().split("\n");
-            files = _.unique(_.filter(files, function(file){
-                return file !== '';
-            }));
+            doExec(command, {}, function(err, files, stderr) {
+                files = files.toString().split("\n");
+                files = _.unique(_.filter(files, function(file){
+                    return file !== '';
+                }));
 
-            runOnFiles(files);
-        });
+                runOnFiles(files);
+            });
+        }
     };
 
     return exports;
