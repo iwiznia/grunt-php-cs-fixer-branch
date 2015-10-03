@@ -2,7 +2,7 @@
   "name": "grunt-php-cs-fixer-branch",
   "version": "0.0.6",
   "description": "Grunt plugin for running PHP Coding Standards Fixer in the modified files of the current branch",
-  "main": "index.js",
+  "main": "phpcsfixerbranch.js",
   "scripts": {
   },
   "repository": {
