@@ -2,7 +2,7 @@
  * Grunt PHP Coding Standard Fixer
  * https://github.com/iwiznia/grunt-php-cs-fixer-branch
  *
- * Licensed under the MIT license.
+ * Licensed under the ISC license.
  */
 'use strict';
 
