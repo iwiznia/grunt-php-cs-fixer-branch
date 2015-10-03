@@ -17,13 +17,16 @@
   ],
   "author": "Ionatan Wiznia",
   "license": "ISC",
+  "contributors": [
+    "Florian Weber"
+  ],
   "bugs": {
     "url": "https://github.com/iwiznia/grunt-php-cs-fixer-branch/issues"
   },
   "homepage": "https://github.com/iwiznia/grunt-php-cs-fixer-branch",
   "dependencies": {
-    "async": "^0.9.0",
-    "underscore": "~1.5.2"
+    "async": "^1.4.2",
+    "underscore": "~1.8.3"
   },
   "devDependencies": {
     "grunt": "~0.4.0",
