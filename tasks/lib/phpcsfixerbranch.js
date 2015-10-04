@@ -2,7 +2,7 @@
  * Grunt PHP Coding Standard Fixer
  * https://github.com/iwiznia/grunt-php-cs-fixer-branch
  *
- * Licensed under the MIT license.
+ * Licensed under the ISC license.
  */
 'use strict';
 
@@ -28,11 +28,27 @@ exports.init = function(grunt) {
             maxBuffer: 200*1024,
             branch: 'master'
         },
+        filesSrc = [],
         done = null,
         config = {};
 
     /**
-     * Builds phpunit command
+     * Wrapper function for running exec()
+     *
+     * @param {string[]} cmd
+     * @param {object}   cmdOptions
+     * @param {function} callback
+     */
+    var doExec = function(cmd, cmdOptions, callback) {
+        cmdOptions = _.extend({
+            maxBuffer: config.maxBuffer
+        }, cmdOptions);
+
+        return exec(cmd, cmdOptions, callback);
+    };
+
+    /**
+     * Builds php-cs-fixer command
      *
      * @return string
      */
@@ -76,85 +92,95 @@ exports.init = function(grunt) {
     };
 
     /**
+     * Actually runs the fixer on a given set of files
+     *
+     * @param {string[]} files
+     * @returns {void}
+     */
+     var runOnFiles = function(files) {
+         var timeA = +(new Date());
+         var memA = process.memoryUsage().heapUsed;
+
+         var cmds = buildCommands(files);
+
+         var runList = _.map(cmds, function(cmd, i) {
+             return function(callback) {
+                 doExec(cmd, {}, function(err, stdout, stderr) {
+
+                     var timeB = +(new Date());
+                     var memB = process.memoryUsage().heapUsed;
+                     grunt.log.writeln("Time [" + i + "]: " + ((timeB - timeA) / (1000)).toFixed(2) + "s, Memory: " + ((memB - memA) / (1024 * 1024)).toFixed(2) + "Mb");
+
+                     if (stdout && (grunt.option("verbose") || config.verbose)) {
+                         grunt.log.write(stdout);
+                     }
+
+                     if (stderr && (!config.ignoreExitCode || (grunt.option("verbose") || config.verbose))) {
+                         callback(stderr, null);
+                         return;
+                     }
+
+                     if (err && config.dryRun) {
+                         callback(err, null);
+                         return;
+                     }
+
+                     callback(null, true);
+                 });
+             };
+         });
+
+         async.parallel(runList, function(err, result) {
+
+             if (err) {
+                 grunt.fatal(err);
+                 done();
+
+                 return;
+             }
+
+             var msg = config.dryRun ? "PHP files valid!" : "PHP files fixed!";
+             grunt.log.ok(msg);
+             done();
+
+             return;
+
+         });
+     }
+
+    /**
      * Setup task before running it
      *
      * @param Object runner
      */
     exports.setup = function(runner) {
         config = runner.options(defaults);
+        filesSrc = runner.filesSrc;
         done = runner.async();
     };
 
     /**
-     * Runs phpunit command with options
-     *
+     * Runs the plugin
      */
     exports.run = function() {
-        var cmdOptions = {
-            maxBuffer: config.maxBuffer
-        };
-
-        var timeA = +(new Date());
-        var memA = process.memoryUsage().heapUsed;
         var branch = config.branch || defaults.branch;
 
-        var command = '{ git diff ' + branch + '... --name-status; git diff --name-status; } | ';
-        command += config.ignored ? "grep -v '" + config.ignored + "' | " : '';
-        command += 'egrep \"^[A|M].*\\.php$\" | cut -f 2';
+        if(_.isArray(filesSrc) && filesSrc.length > 0) {
+            runOnFiles(filesSrc);
+        } else {
+            var command = '{ git diff ' + branch + '... --name-status; git diff --name-status; } | ';
+            command += config.ignored ? "grep -v '" + config.ignored + "' | " : '';
+            command += 'egrep \"^[A|M].*\\.php$\" | cut -f 2';
 
-        exec(command, cmdOptions, function(err, files, stderr) {
-            files = files.toString().split("\n");
-            files = _.unique(_.filter(files, function(file){
-                return file !== '';
-            }));
+            doExec(command, {}, function(err, files, stderr) {
+                files = files.toString().split("\n");
+                files = _.unique(_.filter(files, function(file){
+                    return file !== '';
+                }));
 
-            var cmds = buildCommands(files);
-
-            var runList = _.map(cmds, function(cmd, i) {
-                return function(callback) {
-                    exec(cmd, cmdOptions, function(err, stdout, stderr) {
-
-                        var timeB = +(new Date());
-                        var memB = process.memoryUsage().heapUsed;
-                        grunt.log.writeln("Time [" + i + "]: " + ((timeB - timeA) / (1000)).toFixed(2) + "s, Memory: " + ((memB - memA) / (1024 * 1024)).toFixed(2) + "Mb");
-
-                        if (stdout && (grunt.option("verbose") || config.verbose)) {
-                            grunt.log.write(stdout);
-                        }
-
-                        if (stderr && (!config.ignoreExitCode || (grunt.option("verbose") || config.verbose))) {
-                            callback(stderr, null);
-                            return;
-                        }
-
-                        if (err && config.dryRun) {
-                            callback(err, null);
-                            return;
-                        }
-
-                        callback(null, true);
-                    });
-                };
+                runOnFiles(files);
             });
-
-            async.parallel(runList, function(err, result) {
-
-                if (err) {
-                    grunt.fatal(err);
-                    done();
-
-                    return;
-                }
-
-                var msg = config.dryRun ? "PHP files valid!" : "PHP files fixed!";
-                grunt.log.ok(msg);
-                done();
-
-                return;
-
-            });
-
-        });
+        }
     };
 
     return exports;
