@@ -25,7 +25,7 @@
   },
   "homepage": "https://github.com/iwiznia/grunt-php-cs-fixer-branch",
   "dependencies": {
-    "async": "^1.4.2",
+    "async": "^3.2.2",
     "underscore": "~1.13.2"
   },
   "devDependencies": {
